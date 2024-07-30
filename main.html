@@ -50,9 +50,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      const customID = getParameterByName('customID');
-      const defaultURL = 'https://hls-a117.amzcnp.com/live/default.m3u8';
-      const streamURL = customID ? `https://hls-a117.amzcnp.com/live/${customID}.m3u8` : defaultURL;
+      const streamURL = getParameterByName('streamURL');
+      if (!streamURL) {
+        alert('No stream URL provided');
+        return;
+      }
 
       const video = document.getElementById('player');
       const videoSource = document.getElementById('video-source');
