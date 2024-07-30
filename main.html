@@ -20,7 +20,7 @@
 
     .top-text {
       position: absolute;
-      top: 100%;
+      top: 80%;
       left: 50%;
       transform: translate(-50%, -50%);
       color: black;
@@ -50,7 +50,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      const streamURL = getParameterByName('streamURL');
+      const streamURL = getParameterByName('url');
       if (!streamURL) {
         alert('No stream URL provided');
         return;
