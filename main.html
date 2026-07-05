@@ -122,7 +122,7 @@
             const key = params.get('sportssnap') || 'default';
             try {
                 showStatus('Loading stream list...');
-                const res = await fetch('/stream/l.json');
+                const res = await fetch('https://sportssnap.github.io/stream/l.json');
                 if (!res.ok) throw new Error('Failed to fetch config');
               
                 const config = await res.json();
