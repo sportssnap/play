@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="referrer" content="no-referrer">
     <title>Sportssnap Live Stream</title>
-    <script src='https://sportssnaplive.neocities.org/plyr.js'></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/controls.css" crossorigin="anonymous">
-    
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.ui.js" crossorigin="anonymous"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box }
         html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif }
@@ -18,7 +17,7 @@
         }
         #player-wrap { position: relative; width: 100%; height: 100%; }
         #video { width: 100%; height: 100% }
-      
+       
         /* Persistent Overlays */
         .overlay {
             position: absolute;
@@ -38,6 +37,7 @@
             font-weight: bold;
             white-space: nowrap;
         }
+
         /* Responsive Logo */
         .logo {
             top: 30px;
@@ -54,6 +54,7 @@
             height: 100%;
             object-fit: contain;
         }
+
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             .logo {
@@ -67,16 +68,18 @@
                 bottom: 50px;
             }
         }
+
         @media (max-width: 480px) {
             .logo {
                 width: 95px;
                 height: 48px;
             }
         }
-        .shaka-spinner-container, .shaka-buffering-spinner, .shaka-spinner {
-            display: none !important
+
+        .shaka-spinner-container, .shaka-buffering-spinner, .shaka-spinner { 
+            display: none !important 
         }
-     
+      
         #status {
             position: fixed;
             left: 12px;
@@ -96,7 +99,7 @@
     <div class="video-container">
         <div id="player-wrap" data-shaka-player-container>
             <video autoplay muted playsinline data-shaka-player id="video"></video>
-         
+          
             <!-- Overlays -->
             <div class="overlay watermark">sportssnap.net</div>
             <div class="overlay logo">
@@ -104,7 +107,7 @@
             </div>
         </div>
     </div>
- 
+  
     <div id="status"></div>
 
     <script>
@@ -112,11 +115,13 @@
             const s = document.getElementById('status');
             if (s) s.textContent = text;
         }
+
         function onPlayerError(error) {
             const code = error && error.code ? error.code : 'UNKNOWN';
             console.error('Shaka error', error);
             showStatus('Stream failed (' + code + ')');
         }
+
         async function loadStreamConfig() {
             const params = new URLSearchParams(window.location.search);
             const key = params.get('sportssnap') || 'default';
@@ -124,9 +129,9 @@
                 showStatus('Loading stream list...');
                 const res = await fetch('https://sportssnap.github.io/stream/l.json');
                 if (!res.ok) throw new Error('Failed to fetch config');
-              
+               
                 const config = await res.json();
-              
+               
                 if (!config[key]) {
                     throw new Error(`Stream "${key}" not found`);
                 }
@@ -137,6 +142,7 @@
                 throw e;
             }
         }
+
         async function initPlayer() {
             if (!window.shaka || !shaka.Player || !shaka.Player.isBrowserSupported()) {
                 showStatus('Browser not supported');
@@ -151,8 +157,10 @@
             const ui = video.ui;
             const controls = ui.getControls();
             const player = controls.getPlayer();
+
             player.addEventListener('error', (ev) => onPlayerError(ev.detail));
             controls.addEventListener('error', (ev) => onPlayerError(ev.detail));
+
             ui.configure({
                 controlPanelElements: [
                     "play_pause", "mute", "volume", "spacer",
@@ -160,9 +168,10 @@
                     "overflow_menu"
                 ]
             });
+
             try {
                 const streamData = await loadStreamConfig();
-              
+               
                 let streamUrl, clearKeys = null;
                 if (typeof streamData === 'string') {
                     streamUrl = streamData;
@@ -171,6 +180,7 @@
                     clearKeys = streamData.clearKeys || streamData.keys;
                 }
                 if (!streamUrl) throw new Error('No stream URL found');
+
                 player.configure({
                     streaming: {
                         bufferingGoal: 20,
@@ -179,6 +189,7 @@
                     },
                     drm: clearKeys ? { clearKeys: clearKeys } : {}
                 });
+
                 showStatus('Loading stream...');
                 await player.load(streamUrl);
                 showStatus('');
@@ -188,11 +199,54 @@
                 onPlayerError(e);
             }
         }
+
         document.addEventListener('shaka-ui-loaded', initPlayer);
         document.addEventListener('shaka-ui-load-failed', () => showStatus('Unable to load Shaka UI'));
+
         if ('wakeLock' in navigator) {
             navigator.wakeLock.request('screen').catch(() => {});
         }
+
+
+
+
+        
+        document.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+    window.location.href = 'https://www.sportssnap.net';
+});
+
+document.addEventListener('keydown', function(event) {
+    // List of key combinations to prevent
+    const blockedKeys = [
+        { key: 'a', ctrl: true },  // Select all (Ctrl+A / Command+A)
+        { key: 'c', ctrl: true },  // Copy (Ctrl+C / Command+C)
+        { key: 'x', ctrl: true },  // Cut (Ctrl+X / Command+X)
+        { key: 'u', ctrl: true },  // View source (Ctrl+U / Command+U)
+        { key: 's', ctrl: true },  // Save (Ctrl+S / Command+S)
+        { key: 'p', ctrl: true },  // Print (Ctrl+P / Command+P)
+        { key: 'i', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+I / Command+Option+I)
+        { key: 'j', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+J / Command+Option+J)
+        { key: 'k', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+K for Firefox)
+        { key: 'c', ctrl: true, shift: true }   // DevTools console (Ctrl+Shift+C)
+    ];
+
+    for (const combo of blockedKeys) {
+        if (event.key.toLowerCase() === combo.key.toLowerCase() && 
+            (combo.ctrl && (event.ctrlKey || event.metaKey)) && 
+            (!combo.shift || event.shiftKey)) {
+            event.preventDefault();
+            window.location.href = 'https://www.sportssnap.net';
+            return;
+        }
+    }
+
+    // Block F12 (DevTools)
+    if (event.key === 'F12') {
+        event.preventDefault();
+        window.location.href = 'https://www.sportssnap.net';
+    }
+});
     </script>
 </body>
 </html>
