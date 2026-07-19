@@ -17,7 +17,7 @@
         }
         #player-wrap { position: relative; width: 100%; height: 100%; }
         #video { width: 100%; height: 100% }
-       
+
         /* Persistent Overlays */
         .overlay {
             position: absolute;
@@ -76,10 +76,10 @@
             }
         }
 
-        .shaka-spinner-container, .shaka-buffering-spinner, .shaka-spinner { 
-            display: none !important 
+        .shaka-spinner-container, .shaka-buffering-spinner, .shaka-spinner {
+            display: none !important
         }
-      
+
         #status {
             position: fixed;
             left: 12px;
@@ -99,7 +99,7 @@
     <div class="video-container">
         <div id="player-wrap" data-shaka-player-container>
             <video autoplay muted playsinline data-shaka-player id="video"></video>
-          
+
             <!-- Overlays -->
             <div class="overlay watermark">sportssnap.net</div>
             <div class="overlay logo">
@@ -107,7 +107,7 @@
             </div>
         </div>
     </div>
-  
+
     <div id="status"></div>
 
     <script>
@@ -122,6 +122,22 @@
             showStatus('Stream failed (' + code + ')');
         }
 
+        /*
+         * applyProxy — prepend proxy to a URL if the stream JSON has a non-empty "proxy" field.
+         *
+         * JSON examples:
+         *   "proxy": ""                          → no proxy, URL used as-is
+         *   "proxy": "https://myproxy.com/?url=" → result: https://myproxy.com/?url=<encoded-url>
+         *   "proxy": "https://myproxy.com/"      → result: https://myproxy.com/<url>  (raw append)
+         *
+         * The function auto-detects query-param style (proxy ends with "=") vs path style.
+         */
+        function applyProxy(url, proxy) {
+            if (!proxy || proxy.trim() === '') return url;
+            const p = proxy.trim();
+            return p.endsWith('=') ? p + encodeURIComponent(url) : p + url;
+        }
+
         async function loadStreamConfig() {
             const params = new URLSearchParams(window.location.search);
             const key = params.get('sportssnap') || 'default';
@@ -129,11 +145,11 @@
                 showStatus('Loading stream list...');
                 const res = await fetch('https://sportssnap.github.io/stream/l.json');
                 if (!res.ok) throw new Error('Failed to fetch config');
-               
+
                 const config = await res.json();
-               
+
                 if (!config[key]) {
-                    throw new Error(`Stream "${key}" not found`);
+                    throw new Error('Stream "' + key + '" not found');
                 }
                 return config[key];
             } catch (e) {
@@ -171,14 +187,24 @@
 
             try {
                 const streamData = await loadStreamConfig();
-               
+
                 let streamUrl, clearKeys = null;
+
                 if (typeof streamData === 'string') {
+                    // Plain string shorthand — no proxy support for this format
                     streamUrl = streamData;
                 } else {
                     streamUrl = streamData.url || streamData.mpd || streamData.stream;
-                    clearKeys = streamData.clearKeys || streamData.keys;
+                    clearKeys = streamData.clearKeys || streamData.keys || null;
+
+                    // ── PROXY ──────────────────────────────────────────────────────
+                    // Read "proxy" field from the stream JSON entry.
+                    // Leave "proxy" empty ("") or omit it entirely to skip proxying.
+                    // Set it to your proxy URL to route the stream through it.
+                    streamUrl = applyProxy(streamUrl, streamData.proxy || '');
+                    // ──────────────────────────────────────────────────────────────
                 }
+
                 if (!streamUrl) throw new Error('No stream URL found');
 
                 player.configure({
@@ -207,46 +233,40 @@
             navigator.wakeLock.request('screen').catch(() => {});
         }
 
-
-
-
-        
         document.addEventListener('contextmenu', function(event) {
-    event.preventDefault();
-    window.location.href = 'https://www.sportssnap.net';
-});
-
-document.addEventListener('keydown', function(event) {
-    // List of key combinations to prevent
-    const blockedKeys = [
-        { key: 'a', ctrl: true },  // Select all (Ctrl+A / Command+A)
-        { key: 'c', ctrl: true },  // Copy (Ctrl+C / Command+C)
-        { key: 'x', ctrl: true },  // Cut (Ctrl+X / Command+X)
-        { key: 'u', ctrl: true },  // View source (Ctrl+U / Command+U)
-        { key: 's', ctrl: true },  // Save (Ctrl+S / Command+S)
-        { key: 'p', ctrl: true },  // Print (Ctrl+P / Command+P)
-        { key: 'i', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+I / Command+Option+I)
-        { key: 'j', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+J / Command+Option+J)
-        { key: 'k', ctrl: true, shift: true },  // DevTools (Ctrl+Shift+K for Firefox)
-        { key: 'c', ctrl: true, shift: true }   // DevTools console (Ctrl+Shift+C)
-    ];
-
-    for (const combo of blockedKeys) {
-        if (event.key.toLowerCase() === combo.key.toLowerCase() && 
-            (combo.ctrl && (event.ctrlKey || event.metaKey)) && 
-            (!combo.shift || event.shiftKey)) {
             event.preventDefault();
             window.location.href = 'https://www.sportssnap.net';
-            return;
-        }
-    }
+        });
 
-    // Block F12 (DevTools)
-    if (event.key === 'F12') {
-        event.preventDefault();
-        window.location.href = 'https://www.sportssnap.net';
-    }
-});
+        document.addEventListener('keydown', function(event) {
+            const blockedKeys = [
+                { key: 'a', ctrl: true },
+                { key: 'c', ctrl: true },
+                { key: 'x', ctrl: true },
+                { key: 'u', ctrl: true },
+                { key: 's', ctrl: true },
+                { key: 'p', ctrl: true },
+                { key: 'i', ctrl: true, shift: true },
+                { key: 'j', ctrl: true, shift: true },
+                { key: 'k', ctrl: true, shift: true },
+                { key: 'c', ctrl: true, shift: true }
+            ];
+
+            for (const combo of blockedKeys) {
+                if (event.key.toLowerCase() === combo.key.toLowerCase() &&
+                    (combo.ctrl && (event.ctrlKey || event.metaKey)) &&
+                    (!combo.shift || event.shiftKey)) {
+                    event.preventDefault();
+                    window.location.href = 'https://www.sportssnap.net';
+                    return;
+                }
+            }
+
+            if (event.key === 'F12') {
+                event.preventDefault();
+                window.location.href = 'https://www.sportssnap.net';
+            }
+        });
     </script>
 </body>
 </html>
